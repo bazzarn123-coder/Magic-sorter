@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Magic Sort - 3D Jars & 50 Levels</title>
+    <!-- Tailwind CSS for UI styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            background-color: #090d16;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { text-shadow: 0 0 15px rgba(168, 85, 247, 0.6); }
+            50% { text-shadow: 0 0 30px rgba(168, 85, 247, 1); }
+        }
+        .glow-title { animation: pulse-glow 2.5s infinite; }
+    </style>
+</head>
+<body class="text-white flex flex-col items-center justify-between h-screen overflow-hidden font-sans select-none">
+
+    <!-- ================= SPLASH SCREEN ================= -->
+    <div id="splash-screen" class="absolute inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-6 text-center transition-opacity duration-700">
+        <div class="absolute inset-0 overflow-hidden pointer-events-none opacity-20" id="splash-particles"></div>
+        <div class="relative z-10 max-w-xs w-full bg-slate-900/80 backdrop-blur-md border border-purple-500/30 p-8 rounded-3xl shadow-2xl">
+            <div class="text-6xl mb-4 animate-bounce">🧪✨</div>
+            <h1 class="text-3xl font-extrabold text-purple-400 mb-2 glow-title">Magic Sorter</h1>
+            <p class="text-xs text-slate-400 mb-8">50 3D Stages. Master magical element tiers & earn undos!</p>
+            <button onclick="startGame()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-purple-900/50 transition">
+                Start Game 🚀
+            </button>
+        </div>
+    </div>
+
+    <!-- ================= GAME UI ================= -->
+    <header class="w-full max-w-md p-4 flex justify-between items-center bg-slate-900/80 border-b border-slate-800 backdrop-blur">
+        <div>
+            <h1 class="text-lg font-extrabold tracking-wider text-purple-400">✨ Magic Sort</h1>
+            <p id="level-indicator" class="text-xs text-slate-400">Level 1 / 50</p>
+        </div>
+        <div class="flex gap-2 items-center">
+            <!-- Undo Button -->
+            <button id="undo-btn" onclick="undoMove()" class="bg-slate-800 hover:bg-slate-700 active:scale-95 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-700 transition flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed">
+                ↩️ Undo <span id="undo-count" class="bg-purple-600/60 px-1.5 py-0.5 rounded-full text-[10px]">3</span>
+            </button>
+            <button onclick="restartLevel()" class="bg-slate-800 hover:bg-slate-700 active:scale-95 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-700 transition">
+                🔄 Reset
+            </button>
+        </div>
+    </header>
+
+    <!-- Canvas Play Area -->
+    <main class="flex-1 flex items-center justify-center w-full max-w-md p-2 relative">
+        <canvas id="gameCanvas" class="w-full h-full max-h-[600px] bg-slate-950 rounded-2xl shadow-inner"></canvas>
+        
+        <!-- Win Modal -->
+        <div id="win-modal" class="absolute inset-0 bg-black/80 backdrop-blur-sm hidden flex flex-col items-center justify-center p-6 text-center">
+            <div class="bg-slate-900 border border-purple-500/30 p-6 rounded-3xl shadow-2xl max-w-xs w-full">
+                <div class="text-4xl mb-2 animate-bounce">🏆</div>
+                <h2 id="win-title" class="text-2xl font-bold text-purple-300 mb-1">Magic Sorted!</h2>
+                <p id="win-desc" class="text-xs text-slate-300 mb-6">New jars unlocked for the next tier.</p>
+                <button onclick="nextLevel()" id="next-btn" class="w-full bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-semibold py-3 rounded-2xl shadow-lg shadow-purple-900/40 transition">
+                    Next Level ➡️
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer Help -->
+    <footer class="w-full max-w-md p-3 text-center text-[11px] text-slate-500 bg-slate-900/50 border-t border-slate-800/80">
+        Tap vial to select element layer, then tap target vial to pour.
+    </footer>
+
+    <!-- ================= GAME LOGIC & 3D RENDER ENGINE ================= -->
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const COLORS = [
+            '#ef4444', // 0: Fire Red
+            '#3b82f6', // 1: Water Blue
+            '#10b981', // 2: Nature Green
+            '#eab308', // 3: Light Gold
+            '#a855f7', // 4: Arcane Purple
+            '#ec4899', // 5: Plasma Pink
+            '#06b6d4', // 6: Ice Cyan
+            '#f97316', // 7: Magma Orange
+            '#84cc16', // 8: Lime Acid
+            '#6366f1', // 9: Indigo Void
+            '#14b8a6', // 10: Teal Essence
+            '#f43f5e', // 11: Rose Quartz
+        ];
+
+        let currentLevel = 0; // 0-indexed (Level 1 to 50)
+        let tubes = [];
+        let selectedTubeIndex = null;
+        let TUBE_CAPACITY = 4;
+        const TOTAL_LEVELS = 50;
+
+        let undosLeft = 3;
+        let moveHistory = [];
+
+        let animating = false;
+        let animProgress = 0; 
+        let animData = null;
+
+        function startGame() {
+            const splash = document.getElementById('splash-screen');
+            splash.style.opacity = '0';
+            setTimeout(() => {
+                splash.style.display = 'none';
+                initLevel();
+                resizeCanvas();
+            }, 700);
+        }
+
+        function getLevelConfig(lvl) {
+            let colorsCount = Math.min(COLORS.length, 2 + Math.floor(lvl / 5));
+            let emptyTubes = 2; 
+            return { 
+                colorsCount: colorsCount, 
+                filledTubes: colorsCount, 
+                emptyTubes: emptyTubes 
+            };
+        }
+
+        function initLevel() {
+            if (currentLevel >= TOTAL_LEVELS) {
+                currentLevel = TOTAL_LEVELS - 1;
+            }
+            
+            const config = getLevelConfig(currentLevel);
+            document.getElementById('level-indicator').innerText = `Level ${currentLevel + 1} / ${TOTAL_LEVELS} (${config.colorsCount} Jars)`;
+            document.getElementById('win-modal').classList.add('hidden');
+            selectedTubeIndex = null;
+            animating = false;
+            moveHistory = []; 
+            updateUndoUI();
+
+            let pool = [];
+            for (let i = 0; i < config.colorsCount; i++) {
+                for (let j = 0; j < TUBE_CAPACITY; j++) {
+                    pool.push(i);
+                }
+            }
+
+            do {
+                pool.sort(() => Math.random() - 0.5);
+            } while (isAlreadySorted(pool, config));
+
+            tubes = [];
+            for (let i = 0; i < config.filledTubes; i++) {
+                let tube = [];
+                for (let j = 0; j < TUBE_CAPACITY; j++) {
+                    tube.push(pool.pop());
+                }
+                tubes.push(tube);
+            }
+
+            for (let i = 0; i < config.emptyTubes; i++) {
+                tubes.push([]);
+            }
+            
+            draw();
+        }
+
+        function isAlreadySorted(pool, config) {
+            let chunked = [];
+            for(let i=0; i<config.filledTubes; i++) {
+                chunked.push(pool.slice(i*TUBE_CAPACITY, (i+1)*TUBE_CAPACITY));
+            }
+            return chunked.every(t => t.length === 0 || (t.length === TUBE_CAPACITY && t.every(val => val === t[0])));
+        }
+
+        function updateUndoUI() {
+            const undoBtn = document.getElementById('undo-btn');
+            const undoCount = document.getElementById('undo-count');
+            undoCount.innerText = undosLeft;
+            undoBtn.disabled = undosLeft <= 0 || moveHistory.length === 0;
+        }
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            draw();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function getLayoutMetrics() {
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            const numTubes = tubes.length;
+            
+            const maxPerRow = numTubes > 6 ? Math.ceil(numTubes / 2) : numTubes;
+            const rows = Math.ceil(numTubes / maxPerRow);
+
+            const tubeWidth = Math.min(36, (width / maxPerRow) - 10);
+            const tubeHeight = tubeWidth * 2.7;
+            
+            return { width, height, tubeWidth, tubeHeight, maxPerRow, rows };
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+
+            const metrics = getLayoutMetrics();
+            const { tubeWidth, tubeHeight, maxPerRow, rows } = metrics;
+            
+            const horizontalSpacing = (canvas.clientWidth - (maxPerRow * tubeWidth)) / (maxPerRow + 1);
+            const verticalSpacing = 20;
+            const startY = (canvas.clientHeight - (rows * tubeHeight + (rows - 1) * verticalSpacing)) / 2;
+
+            tubes.forEach((tube, index) => {
+                const row = Math.floor(index / maxPerRow);
+                const col = index % maxPerRow;
+
+                const x = horizontalSpacing + col * (tubeWidth + horizontalSpacing);
+                const y = Math.max(10, startY + row * (tubeHeight + verticalSpacing));
+
+                tube.rx = x;
+                tube.ry = y;
+                tube.rwidth = tubeWidth;
+                tube.rheight = tubeHeight;
+
+                let skipTopCount = 0;
+                if (animating && animData && animData.fromIdx === index) {
+                    skipTopCount = animData.count;
+                }
+
+                draw3DTube(tube, x, y, tubeWidth, tubeHeight, index === selectedTubeIndex, skipTopCount);
+            });
+
+            if (animating && animData) {
+                renderPourAnimation();
+            }
+        }
+
+        // ================= 3D JAR RENDERING ENGINE =================
+        function draw3DTube(tube, x, y, w, h, isSelected, skipTopCount = 0) {
+            ctx.save();
+
+            let renderY = y;
+            if (isSelected) {
+                renderY -= 12; // Floating lift offset when selected
+            }
+
+            const borderWidth = 3;
+            const innerW = w - (borderWidth * 2);
+            const innerH = h - 16;
+            const layerH = innerH / TUBE_CAPACITY;
+
+            // 1. Draw 3D Base Shadow Underneath Jar
+            ctx.save();
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.beginPath();
+            ctx.ellipse(x + w / 2, renderY + h + 2, w / 2.2, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // 2. Clip Layer Contents Inside Curved 3D Glass Silhouette
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(x + borderWidth, renderY + 14, innerW, innerH - 6, [0, 0, w/2.8, w/2.8]);
+            ctx.clip();
+
+            const renderLength = tube.length - skipTopCount;
+            for (let layerIndex = 0; layerIndex < renderLength; layerIndex++) {
+                const colorIdx = tube[layerIndex];
+                const fromBottom = TUBE_CAPACITY - 1 - layerIndex;
+                const ly = renderY + 14 + (fromBottom * layerH);
+                
+                // Horizontal 3D cylindrical lighting gradient across each liquid block
+                const layerGrad = ctx.createLinearGradient(x, ly, x + w, ly);
+                const baseColor = COLORS[colorIdx];
+                
+                layerGrad.addColorStop(0, adjustColorBrightness(baseColor, -40)); // Left dark shadow edge
+                layerGrad.addColorStop(0.3, baseColor);                          // Mid body color
+                layerGrad.addColorStop(0.5, adjustColorBrightness(baseColor, 50)); // Center shiny highlight refraction
+                layerGrad.addColorStop(0.85, baseColor);                         // Mid right color
+                layerGrad.addColorStop(1, adjustColorBrightness(baseColor, -55));  // Right dark shadow edge
+
+                ctx.fillStyle = layerGrad;
+                ctx.fillRect(x, ly - 1, w, layerH + 2);
+
+                // Top meniscus curve line for realistic liquid surface look
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+                ctx.beginPath();
+                ctx.ellipse(x + w/2, ly, innerW/2, 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+
+            // 3. Draw 3D Glass Cylinder Sheen & Outer Border
+            const glassGrad = ctx.createLinearGradient(x, renderY, x + w, renderY);
+            glassGrad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+            glassGrad.addColorStop(0.15, 'rgba(255, 255, 255, 0.1)');
+            glassGrad.addColorStop(0.75, 'rgba(0, 0, 0, 0.1)');
+            glassGrad.addColorStop(0.92, 'rgba(255, 255, 255, 0.3)');
+            glassGrad.addColorStop(1, 'rgba(255, 255, 255, 0.6)');
+
+            ctx.strokeStyle = isSelected ? '#c084fc' : glassGrad;
+            ctx.lineWidth = borderWidth;
+            ctx.beginPath();
+            ctx.roundRect(x, renderY, w, h, [4, 4, w/2.5, w/2.5]);
+            ctx.stroke();
+
+            // 4. Strong Glass Specular Highlight Strips for Depth
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+            ctx.beginPath();
+            ctx.roundRect(x + 4, renderY + 16, 2.5, h - 26, 1);
+            ctx.fill();
+
+            // 5. Jar Rim Flange Outline (Top Neck Feature)
+            ctx.strokeStyle = isSelected ? '#d8b4fe' : 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.roundRect(x - 2, renderY, w + 4, 8, 2);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // Color shading utility for 3D metallic/cylindrical light interpolation
+        function adjustColorBrightness(hex, percent) {
+            let num = parseInt(hex.replace("#",""), 16);
+            let r = (num >> 16) + percent;
+            let g = ((num >> 8) & 0x00FF) + percent;
+            let b = (num & 0x0000FF) + percent;
+            r = Math.clamp(r, 0, 255);
+            g = Math.clamp(g, 0, 255);
+            b = Math.clamp(b, 0, 255);
+            return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1)}`;
+        }
+
+        Math.clamp = function(num, min, max) {
+            return Math.min(Math.max(num, min), max);
+        };
+
+        function renderPourAnimation() {
+            animProgress += 0.09; 
+            if (animProgress >= 1) {
+                animProgress = 1;
+                animating = false;
+                finalizePour();
+                checkGameState();
+            }
+
+            const fromT = tubes[animData.fromIdx];
+            const toT = tubes[animData.toIdx];
+
+            const startX = fromT.rx + fromT.rwidth / 2;
+            const startY = fromT.ry - 15;
+            const endX = toT.rx + toT.rwidth / 2;
+            const endY = toT.ry - 15;
+
+            const currX = startX + (endX - startX) * animProgress;
+            const currY = startY + (endY - startY) * animProgress - Math.sin(animProgress * Math.PI) * 40;
+
+            ctx.save();
+            ctx.strokeStyle = COLORS[animData.colorIdx];
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(currX, currY);
+            ctx.lineTo(endX, endY + 10);
+            ctx.stroke();
+            ctx.restore();
+
+            if (animating) {
+                requestAnimationFrame(draw);
+            }
+        }
+
+        canvas.addEventListener('click', (e) => {
+            if (animating) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            for (let i = 0; i < tubes.length; i++) {
+                const t = tubes[i];
+                const hitPadding = 12;
+                if (
+                    clickX >= t.rx - hitPadding &&
+                    clickX <= t.rx + t.rwidth + hitPadding &&
+                    clickY >= t.ry - 20 &&
+                    clickY <= t.ry + t.rheight + hitPadding
+                ) {
+                    handleTubeTap(i);
+                    break;
+                }
+            }
+        });
+
+        function handleTubeTap(index) {
+            if (selectedTubeIndex === null) {
+                if (tubes[index].length === 0) return;
+                selectedTubeIndex = index;
+            } else {
+                if (selectedTubeIndex === index) {
+                    selectedTubeIndex = null;
+                } else {
+                    initiatePour(selectedTubeIndex, index);
+                    selectedTubeIndex = null;
+                }
+            }
+            draw();
+        }
+
+        function initiatePour(fromIdx, toIdx) {
+            const fromTube = tubes[fromIdx];
+            const toTube = tubes[toIdx];
+
+            if (fromTube.length === 0) return;
+            if (toTube.length >= TUBE_CAPACITY) return;
+
+            const movingColor = fromTube[fromTube.length - 1];
+            if (toTube.length > 0 && toTube[toTube.length - 1] !== movingColor) return;
+
+            let countToMove = 0;
+            for (let i = fromTube.length - 1; i >= 0; i--) {
+                if (fromTube[i] === movingColor) countToMove++;
+                else break;
+            }
+
+            const spaceAvailable = TUBE_CAPACITY - toTube.length;
+            const actualMoveCount = Math.min(countToMove, spaceAvailable);
+
+            const snapshot = tubes.map(tube => [...tube]);
+            moveHistory.push(snapshot);
+            if (moveHistory.length > 20) moveHistory.shift();
+
+            animData = {
+                fromIdx: fromIdx,
+                toIdx: toIdx,
+                colorIdx: movingColor,
+                count: actualMoveCount
+            };
+
+            animating = true;
+            animProgress = 0;
+            updateUndoUI();
+            requestAnimationFrame(draw);
+        }
+
+        function finalizePour() {
+            const fromTube = tubes[animData.fromIdx];
+            const toTube = tubes[animData.toIdx];
+
+            for (let i = 0; i < animData.count; i++) {
+                toTube.push(fromTube.pop());
+            }
+            animData = null;
+            draw();
+        }
+
+        function undoMove() {
+            if (animating || undosLeft <= 0 || moveHistory.length === 0) return;
+
+            const previousState = moveHistory.pop();
+            tubes = previousState.map(tube => [...tube]);
+            undosLeft--;
+            selectedTubeIndex = null;
+            updateUndoUI();
+            draw();
+        }
+
+        function checkGameState() {
+            if (checkWinCondition()) {
+                setTimeout(() => {
+                    let earnedUndoMsg = "";
+                    if ((currentLevel + 1) % 3 === 0 && undosLeft < 3) {
+                        undosLeft++;
+                        earnedUndoMsg = " 🎁 Earned +1 Undo charge!";
+                    }
+
+                    const modal = document.getElementById('win-modal');
+                    const title = document.getElementById('win-title');
+                    const desc = document.getElementById('win-desc');
+                    const nextBtn = document.getElementById('next-btn');
+
+                    if (currentLevel === TOTAL_LEVELS - 1) {
+                        title.innerText = "🏆 Game Complete!";
+                        desc.innerText = "Incredible! You have mastered all 50 tiers and unlocked every magic jar!";
+                        nextBtn.innerText = "Play Again 🔄";
+                        nextBtn.onclick = () => { currentLevel = 0; undosLeft = 3; initLevel(); };
+                    } else {
+                        title.innerText = "✨ Magic Sorted!";
+                        desc.innerText = `Level ${currentLevel + 1} cleared! Next tier adds more jars.${earnedUndoMsg}`;
+                        nextBtn.innerText = "Next Level ➡️";
+                        nextBtn.onclick = nextLevel;
+                    }
+                    updateUndoUI();
+                    modal.classList.remove('hidden');
+                }, 150);
+            }
+        }
+
+        function checkWinCondition() {
+            for (let tube of tubes) {
+                if (tube.length === 0) continue;
+                if (tube.length < TUBE_CAPACITY) return false;
+                const baseColor = tube[0];
+                for (let i = 1; i < tube.length; i++) {
+                    if (tube[i] !== baseColor) return false;
+                }
+            }
+            return true;
+        }
+
+        function restartLevel() {
+            initLevel();
+        }
+
+        function nextLevel() {
+            currentLevel++;
+            initLevel();
+        }
+    </script>
+</body>
+</html>
