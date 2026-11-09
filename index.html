@@ -34,7 +34,7 @@
         <div class="relative z-10 max-w-xs w-full bg-slate-900/90 backdrop-blur-md border border-purple-500/30 p-8 rounded-3xl shadow-2xl">
             <div class="text-6xl mb-4 animate-bounce">🧪✨</div>
             <h1 class="text-3xl font-extrabold text-purple-400 mb-2 glow-title">Magic Sorter</h1>
-            <p class="text-xs text-slate-400 mb-8">50 3D Stages. Raised Navigation Padding & Permanent Shelves!</p>
+            <p class="text-xs text-slate-400 mb-8">50 3D Stages. Uninterrupted Touch & Responsive Pouring!</p>
             <button onclick="startGame()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-purple-900/50 transition">
                 Start Game 🚀
             </button>
@@ -68,10 +68,10 @@
 
     <!-- Canvas Play Area -->
     <main class="flex-1 flex items-center justify-center w-full max-w-md p-2 relative overflow-hidden">
-        <div class="relative w-full h-full max-h-[400px] bg-slate-950 rounded-2xl shadow-inner overflow-hidden">
-            <!-- Dedicated Shelf Background Layer Canvas -->
+        <div class="relative w-full h-full max-h-[460px] bg-slate-950 rounded-2xl shadow-inner overflow-hidden">
+            <!-- Dedicated 3-Shelf Background Layer Canvas -->
             <canvas id="shelfCanvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
-            <!-- Main Game & Jars Canvas -->
+            <!-- Main Game & Larger Vases Canvas -->
             <canvas id="gameCanvas" class="absolute inset-0 w-full h-full"></canvas>
         </div>
         
@@ -88,7 +88,7 @@
         </div>
     </main>
 
-    <!-- BOTTOM CONTROLS & POWER-UPS WITH RAISED SAFE PADDING -->
+    <!-- BOTTOM CONTROLS & POWER-UPS WITH SAFE NAVIGATION PADDING -->
     <footer class="w-full max-w-md flex flex-col bg-slate-900/95 border-t border-slate-800 safe-bottom-padding">
         <div class="px-3 pt-2.5 grid grid-cols-3 gap-2">
             <button id="pw-vial" onclick="usePowerup('vial')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-2.5 text-center transition active:scale-95 flex flex-col items-center">
@@ -105,7 +105,7 @@
             </button>
         </div>
         <div class="text-center text-[10px] text-slate-500 mt-2">
-            Tap vial to select, tap target to pour.
+            Tap vase to select, tap target to pour.
         </div>
     </footer>
 
@@ -244,7 +244,7 @@
             if (currentLevel >= TOTAL_LEVELS) currentLevel = 0;
             
             const config = getLevelConfig(currentLevel);
-            document.getElementById('level-indicator').innerText = `Level ${currentLevel + 1} / ${TOTAL_LEVELS} (${config.colorsCount} Jars)`;
+            document.getElementById('level-indicator').innerText = `Level ${currentLevel + 1} / ${TOTAL_LEVELS} (${config.colorsCount} Vases)`;
             document.getElementById('win-modal').classList.add('hidden');
             selectedTubeIndex = null;
             animating = false;
@@ -320,7 +320,7 @@
         function resizeCanvas() {
             const rect = canvas.getBoundingClientRect();
             const w = rect.width || canvas.clientWidth || 350;
-            const h = rect.height || canvas.clientHeight || 400;
+            const h = rect.height || canvas.clientHeight || 420;
             
             canvas.width = w * window.devicePixelRatio;
             canvas.height = h * window.devicePixelRatio;
@@ -340,28 +340,29 @@
 
         function getLayoutMetrics() {
             const width = (canvas.width / window.devicePixelRatio) || canvas.clientWidth || 350;
-            const height = (canvas.height / window.devicePixelRatio) || canvas.clientHeight || 400;
+            const height = (canvas.height / window.devicePixelRatio) || canvas.clientHeight || 420;
             const numTubes = tubes.length || 4;
-            const maxPerRow = numTubes > 6 ? Math.ceil(numTubes / 2) : numTubes;
-            const rows = Math.ceil(numTubes / maxPerRow);
+            const maxPerRow = Math.ceil(numTubes / 3);
+            const rows = 3;
 
-            const tubeWidth = Math.min(26, (width / maxPerRow) - 10);
-            const tubeHeight = tubeWidth * 2.6;
+            const tubeWidth = Math.min(30, (width / maxPerRow) - 12);
+            const tubeHeight = tubeWidth * 2.7;
             return { width, height, tubeWidth, tubeHeight, maxPerRow, rows };
         }
 
+        // ================= 3 SHELVES WITH GENEROUS HEADROOM GAP ABOVE VASES =================
         function drawShelves() {
             if (!shelfCtx) return;
             const metrics = getLayoutMetrics();
             shelfCtx.clearRect(0, 0, metrics.width, metrics.height);
 
-            const { tubeWidth, tubeHeight, maxPerRow, rows } = metrics;
-            const verticalSpacing = 22;
+            const { tubeWidth, tubeHeight, rows } = metrics;
+            const verticalSpacing = 32; 
             const totalContentHeight = rows * tubeHeight + (rows - 1) * verticalSpacing;
-            const startY = Math.max(10, (metrics.height - totalContentHeight) / 2);
+            const startY = Math.max(16, (metrics.height - totalContentHeight) / 2);
 
             for (let r = 0; r < rows; r++) {
-                let shelfY = startY + r * (tubeHeight + verticalSpacing) + tubeHeight + 3;
+                let shelfY = startY + r * (tubeHeight + verticalSpacing) + tubeHeight + 4;
                 let shelfLeft = 8;
                 let shelfRight = metrics.width - 8;
                 let shelfThickness = 14;
@@ -393,16 +394,19 @@
             ctx.clearRect(0, 0, metrics.width, metrics.height);
 
             const { tubeWidth, tubeHeight, maxPerRow, rows } = metrics;
-            const horizontalSpacing = (metrics.width - (maxPerRow * tubeWidth)) / (maxPerRow + 1);
-            const verticalSpacing = 22;
+            const verticalSpacing = 32;
             const totalContentHeight = rows * tubeHeight + (rows - 1) * verticalSpacing;
-            const startY = Math.max(10, (metrics.height - totalContentHeight) / 2);
+            const startY = Math.max(16, (metrics.height - totalContentHeight) / 2);
 
             tubes.forEach((tube, index) => {
                 const row = Math.floor(index / maxPerRow);
                 const col = index % maxPerRow;
 
-                const x = horizontalSpacing + col * (tubeWidth + horizontalSpacing);
+                let rowItems = Math.min(maxPerRow, tubes.length - (row * maxPerRow));
+                let rowWidth = rowItems * tubeWidth + (rowItems - 1) * 12;
+                let rowStartX = (metrics.width - rowWidth) / 2;
+
+                const x = rowStartX + col * (tubeWidth + 12);
                 const y = startY + row * (tubeHeight + verticalSpacing);
 
                 tube.rx = x;
@@ -421,6 +425,7 @@
             renderParticles();
         }
 
+        // ================= HIGH-END 3D VASE RENDERER =================
         function draw3DTube(tube, x, y, w, h, isSelected, tiltAngle = 0, customAlpha = 1, isPouringSource = false) {
             ctx.save();
             ctx.globalAlpha = customAlpha;
@@ -631,9 +636,8 @@
             }
         }
 
-        // ================= INPUT & GAMEPLAY =================
+        // ================= INPUT & GAMEPLAY (UNBLOCKED DURING ANIMATION) =================
         canvas.addEventListener('click', (e) => {
-            if (animating) return;
             const rect = canvas.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
@@ -641,8 +645,8 @@
             for (let i = 0; i < tubes.length; i++) {
                 const t = tubes[i];
                 if (
-                    clickX >= t.rx - 10 && clickX <= t.rx + t.rwidth + 10 &&
-                    clickY >= t.ry - 15 && clickY <= t.ry + t.rheight + 15
+                    clickX >= t.rx - 12 && clickX <= t.rx + t.rwidth + 12 &&
+                    clickY >= t.ry - 20 && clickY <= t.ry + t.rheight + 20
                 ) {
                     handleTubeTap(i);
                     break;
@@ -703,7 +707,7 @@
         }
 
         function undoMove() {
-            if (animating || undosLeft <= 0 || moveHistory.length === 0) return;
+            if (undosLeft <= 0 || moveHistory.length === 0) return;
             tubes = moveHistory.pop().map(t => [...t]);
             undosLeft--;
             selectedTubeIndex = null;
@@ -712,13 +716,11 @@
         }
 
         function skipLevel() {
-            if (animating) return;
             currentLevel = (currentLevel + 1) % TOTAL_LEVELS;
             initLevel();
         }
 
         function usePowerup(type) {
-            if (animating) return;
             initAudio();
             if (type === 'vial' && powerups.vial > 0 && currentLevel >= 2) {
                 powerups.vial--;
