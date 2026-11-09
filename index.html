@@ -22,6 +22,9 @@
             50% { text-shadow: 0 0 30px rgba(168, 85, 247, 1); }
         }
         .glow-title { animation: pulse-glow 2.5s infinite; }
+        .safe-bottom-padding {
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.25rem);
+        }
     </style>
 </head>
 <body class="text-white flex flex-col items-center justify-between h-screen font-sans select-none">
@@ -31,7 +34,7 @@
         <div class="relative z-10 max-w-xs w-full bg-slate-900/90 backdrop-blur-md border border-purple-500/30 p-8 rounded-3xl shadow-2xl">
             <div class="text-6xl mb-4 animate-bounce">🧪✨</div>
             <h1 class="text-3xl font-extrabold text-purple-400 mb-2 glow-title">Magic Sorter</h1>
-            <p class="text-xs text-slate-400 mb-8">50 3D Stages. Independent Shelf Layer & Smooth Physics!</p>
+            <p class="text-xs text-slate-400 mb-8">50 3D Stages. Safe Navigation Spacing & Permanent Shelves!</p>
             <button onclick="startGame()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-purple-900/50 transition">
                 Start Game 🚀
             </button>
@@ -63,9 +66,9 @@
         </div>
     </header>
 
-    <!-- Canvas Play Area with Dedicated Shelf Layer Canvas Behind Jar Canvas -->
-    <main class="flex-1 flex items-center justify-center w-full max-w-md p-2 relative">
-        <div class="relative w-full h-full max-h-[500px] bg-slate-950 rounded-2xl shadow-inner overflow-hidden">
+    <!-- Canvas Play Area -->
+    <main class="flex-1 flex items-center justify-center w-full max-w-md p-2 relative overflow-hidden">
+        <div class="relative w-full h-full max-h-[460px] bg-slate-950 rounded-2xl shadow-inner overflow-hidden">
             <!-- Dedicated Shelf Background Layer Canvas -->
             <canvas id="shelfCanvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
             <!-- Main Game & Jars Canvas -->
@@ -85,25 +88,25 @@
         </div>
     </main>
 
-    <!-- POWER-UPS BAR -->
-    <nav class="w-full max-w-md px-3 py-2 grid grid-cols-3 gap-2 bg-slate-900/90 border-t border-slate-800">
-        <button id="pw-vial" onclick="usePowerup('vial')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-2 text-center transition active:scale-95 flex flex-col items-center">
-            <span class="text-base">🧪</span>
-            <span id="pw-vial-txt" class="text-[10px] text-slate-400">🔒 Lvl 3</span>
-        </button>
-        <button id="pw-shuffle" onclick="usePowerup('shuffle')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-2 text-center transition active:scale-95 flex flex-col items-center">
-            <span class="text-base">🔀</span>
-            <span id="pw-shuffle-txt" class="text-[10px] text-slate-400">🔒 Lvl 5</span>
-        </button>
-        <button id="pw-clear" onclick="usePowerup('clear')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-2 text-center transition active:scale-95 flex flex-col items-center">
-            <span class="text-base">✨</span>
-            <span id="pw-clear-txt" class="text-[10px] text-slate-400">🔒 Lvl 8</span>
-        </button>
-    </nav>
-
-    <!-- Footer Help -->
-    <footer class="w-full max-w-md px-3 py-1.5 text-center text-[10px] text-slate-500 bg-slate-900/50">
-        Shelves on isolated background layer!
+    <!-- BOTTOM CONTROLS & POWER-UPS WITH SAFE NAVIGATION PADDING -->
+    <footer class="w-full max-w-md flex flex-col bg-slate-900/95 border-t border-slate-800 safe-bottom-padding">
+        <div class="px-3 pt-2 grid grid-cols-3 gap-2">
+            <button id="pw-vial" onclick="usePowerup('vial')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-2 text-center transition active:scale-95 flex flex-col items-center">
+                <span class="text-base">🧪</span>
+                <span id="pw-vial-txt" class="text-[10px] text-slate-400">🔒 Lvl 3</span>
+            </button>
+            <button id="pw-shuffle" onclick="usePowerup('shuffle')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-2 text-center transition active:scale-95 flex flex-col items-center">
+                <span class="text-base">🔀</span>
+                <span id="pw-shuffle-txt" class="text-[10px] text-slate-400">🔒 Lvl 5</span>
+            </button>
+            <button id="pw-clear" onclick="usePowerup('clear')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-2 text-center transition active:scale-95 flex flex-col items-center">
+                <span class="text-base">✨</span>
+                <span id="pw-clear-txt" class="text-[10px] text-slate-400">🔒 Lvl 8</span>
+            </button>
+        </div>
+        <div class="text-center text-[10px] text-slate-500 mt-1.5">
+            Tap vial to select, tap target to pour.
+        </div>
     </footer>
 
     <!-- ================= GAME ENGINE ================= -->
@@ -342,21 +345,20 @@
             const maxPerRow = numTubes > 6 ? Math.ceil(numTubes / 2) : numTubes;
             const rows = Math.ceil(numTubes / maxPerRow);
 
-            const tubeWidth = Math.min(30, (width / maxPerRow) - 10);
-            const tubeHeight = tubeWidth * 2.7;
+            const tubeWidth = Math.min(28, (width / maxPerRow) - 10);
+            const tubeHeight = tubeWidth * 2.6;
             return { width, height, tubeWidth, tubeHeight, maxPerRow, rows };
         }
 
-        // ================= DEDICATED SHELF LAYER RENDERER =================
         function drawShelves() {
             if (!shelfCtx) return;
             const metrics = getLayoutMetrics();
             shelfCtx.clearRect(0, 0, metrics.width, metrics.height);
 
             const { tubeWidth, tubeHeight, maxPerRow, rows } = metrics;
-            const verticalSpacing = 28;
+            const verticalSpacing = 24;
             const totalContentHeight = rows * tubeHeight + (rows - 1) * verticalSpacing;
-            const startY = Math.max(15, (metrics.height - totalContentHeight) / 2);
+            const startY = Math.max(12, (metrics.height - totalContentHeight) / 2);
 
             for (let r = 0; r < rows; r++) {
                 let shelfY = startY + r * (tubeHeight + verticalSpacing) + tubeHeight + 3;
@@ -392,9 +394,9 @@
 
             const { tubeWidth, tubeHeight, maxPerRow, rows } = metrics;
             const horizontalSpacing = (metrics.width - (maxPerRow * tubeWidth)) / (maxPerRow + 1);
-            const verticalSpacing = 28;
+            const verticalSpacing = 24;
             const totalContentHeight = rows * tubeHeight + (rows - 1) * verticalSpacing;
-            const startY = Math.max(15, (metrics.height - totalContentHeight) / 2);
+            const startY = Math.max(12, (metrics.height - totalContentHeight) / 2);
 
             tubes.forEach((tube, index) => {
                 const row = Math.floor(index / maxPerRow);
@@ -419,7 +421,6 @@
             renderParticles();
         }
 
-        // ================= HIGH-END 3D JAR & UNIFIED LIQUID RENDERER =================
         function draw3DTube(tube, x, y, w, h, isSelected, tiltAngle = 0, customAlpha = 1, isPouringSource = false) {
             ctx.save();
             ctx.globalAlpha = customAlpha;
