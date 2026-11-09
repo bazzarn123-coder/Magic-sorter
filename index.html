@@ -11,7 +11,11 @@
             touch-action: manipulation;
             user-select: none;
             -webkit-user-select: none;
-            background-color: #090d16;
+            background-color: #070a14;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
         }
         @keyframes pulse-glow {
             0%, 100% { text-shadow: 0 0 15px rgba(168, 85, 247, 0.6); }
@@ -20,15 +24,14 @@
         .glow-title { animation: pulse-glow 2.5s infinite; }
     </style>
 </head>
-<body class="text-white flex flex-col items-center justify-between h-screen overflow-hidden font-sans select-none">
+<body class="text-white flex flex-col items-center justify-between h-screen font-sans select-none">
 
     <!-- ================= SPLASH SCREEN ================= -->
     <div id="splash-screen" class="absolute inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-6 text-center transition-opacity duration-700">
-        <div class="absolute inset-0 overflow-hidden pointer-events-none opacity-20" id="splash-particles"></div>
-        <div class="relative z-10 max-w-xs w-full bg-slate-900/80 backdrop-blur-md border border-purple-500/30 p-8 rounded-3xl shadow-2xl">
+        <div class="relative z-10 max-w-xs w-full bg-slate-900/90 backdrop-blur-md border border-purple-500/30 p-8 rounded-3xl shadow-2xl">
             <div class="text-6xl mb-4 animate-bounce">🧪✨</div>
             <h1 class="text-3xl font-extrabold text-purple-400 mb-2 glow-title">Magic Sorter</h1>
-            <p class="text-xs text-slate-400 mb-8">50 3D Stages. Master magical element tiers & earn undos!</p>
+            <p class="text-xs text-slate-400 mb-8">50 3D Stages. Independent Shelf Layer & Smooth Physics!</p>
             <button onclick="startGame()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-purple-900/50 transition">
                 Start Game 🚀
             </button>
@@ -36,28 +39,41 @@
     </div>
 
     <!-- ================= GAME UI ================= -->
-    <header class="w-full max-w-md p-4 flex justify-between items-center bg-slate-900/80 border-b border-slate-800 backdrop-blur">
+    <header class="w-full max-w-md p-3 flex justify-between items-center bg-slate-900/80 border-b border-slate-800 backdrop-blur">
         <div>
-            <h1 class="text-lg font-extrabold tracking-wider text-purple-400">✨ Magic Sort</h1>
+            <h1 class="text-base font-extrabold tracking-wider text-purple-400">✨ Magic Sort 3D</h1>
             <p id="level-indicator" class="text-xs text-slate-400">Level 1 / 50</p>
         </div>
-        <div class="flex gap-2 items-center">
-            <!-- Undo Button -->
-            <button id="undo-btn" onclick="undoMove()" class="bg-slate-800 hover:bg-slate-700 active:scale-95 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-700 transition flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed">
-                ↩️ Undo <span id="undo-count" class="bg-purple-600/60 px-1.5 py-0.5 rounded-full text-[10px]">3</span>
+        <div class="flex gap-1.5 items-center">
+            <!-- Audio Toggle -->
+            <button id="sound-btn" onclick="toggleAudio()" class="bg-slate-800 hover:bg-slate-700 active:scale-95 p-2 rounded-xl text-xs font-semibold border border-slate-700 transition" title="Toggle Sound">
+                🔊
             </button>
-            <button onclick="restartLevel()" class="bg-slate-800 hover:bg-slate-700 active:scale-95 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-700 transition">
-                🔄 Reset
+            <!-- Undo Button -->
+            <button id="undo-btn" onclick="undoMove()" class="bg-slate-800 hover:bg-slate-700 active:scale-95 px-2 py-1.5 rounded-xl text-xs font-semibold border border-slate-700 transition flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed">
+                ↩️ <span id="undo-count" class="bg-purple-600/60 px-1.5 py-0.5 rounded-full text-[10px]">3</span>
+            </button>
+            <!-- Level Skip Button -->
+            <button onclick="skipLevel()" class="bg-purple-900/60 hover:bg-purple-800 active:scale-95 px-2 py-1.5 rounded-xl text-xs font-semibold border border-purple-700 transition" title="Skip to Next Level">
+                ⏭️ Skip
+            </button>
+            <button onclick="restartLevel()" class="bg-slate-800 hover:bg-slate-700 active:scale-95 px-2.5 py-1.5 rounded-xl text-xs font-semibold border border-slate-700 transition" title="Restart Level">
+                🔄
             </button>
         </div>
     </header>
 
-    <!-- Canvas Play Area -->
+    <!-- Canvas Play Area with Dedicated Shelf Layer Canvas Behind Jar Canvas -->
     <main class="flex-1 flex items-center justify-center w-full max-w-md p-2 relative">
-        <canvas id="gameCanvas" class="w-full h-full max-h-[600px] bg-slate-950 rounded-2xl shadow-inner"></canvas>
+        <div class="relative w-full h-full max-h-[500px] bg-slate-950 rounded-2xl shadow-inner overflow-hidden">
+            <!-- Dedicated Shelf Background Layer Canvas -->
+            <canvas id="shelfCanvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+            <!-- Main Game & Jars Canvas -->
+            <canvas id="gameCanvas" class="absolute inset-0 w-full h-full"></canvas>
+        </div>
         
         <!-- Win Modal -->
-        <div id="win-modal" class="absolute inset-0 bg-black/80 backdrop-blur-sm hidden flex flex-col items-center justify-center p-6 text-center">
+        <div id="win-modal" class="absolute inset-0 bg-black/80 backdrop-blur-sm hidden flex flex-col items-center justify-center p-6 text-center z-40">
             <div class="bg-slate-900 border border-purple-500/30 p-6 rounded-3xl shadow-2xl max-w-xs w-full">
                 <div class="text-4xl mb-2 animate-bounce">🏆</div>
                 <h2 id="win-title" class="text-2xl font-bold text-purple-300 mb-1">Magic Sorted!</h2>
@@ -69,32 +85,63 @@
         </div>
     </main>
 
+    <!-- POWER-UPS BAR -->
+    <nav class="w-full max-w-md px-3 py-2 grid grid-cols-3 gap-2 bg-slate-900/90 border-t border-slate-800">
+        <button id="pw-vial" onclick="usePowerup('vial')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-2 text-center transition active:scale-95 flex flex-col items-center">
+            <span class="text-base">🧪</span>
+            <span id="pw-vial-txt" class="text-[10px] text-slate-400">🔒 Lvl 3</span>
+        </button>
+        <button id="pw-shuffle" onclick="usePowerup('shuffle')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-2 text-center transition active:scale-95 flex flex-col items-center">
+            <span class="text-base">🔀</span>
+            <span id="pw-shuffle-txt" class="text-[10px] text-slate-400">🔒 Lvl 5</span>
+        </button>
+        <button id="pw-clear" onclick="usePowerup('clear')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-2 text-center transition active:scale-95 flex flex-col items-center">
+            <span class="text-base">✨</span>
+            <span id="pw-clear-txt" class="text-[10px] text-slate-400">🔒 Lvl 8</span>
+        </button>
+    </nav>
+
     <!-- Footer Help -->
-    <footer class="w-full max-w-md p-3 text-center text-[11px] text-slate-500 bg-slate-900/50 border-t border-slate-800/80">
-        Tap vial to select element layer, then tap target vial to pour.
+    <footer class="w-full max-w-md px-3 py-1.5 text-center text-[10px] text-slate-500 bg-slate-900/50">
+        Shelves on isolated background layer!
     </footer>
 
-    <!-- ================= GAME LOGIC & 3D RENDER ENGINE ================= -->
+    <!-- ================= GAME ENGINE ================= -->
     <script>
+        // Polyfill roundRect for older WebViews / anWriter
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, radii) {
+                if (typeof radii === 'undefined') radii = 0;
+                if (!Array.isArray(radii)) radii = [radii];
+                let rTL = radii[0] || 0, rTR = radii[1] || rTL, rBR = radii[2] || rTL, rBL = radii[3] || rTR;
+                this.beginPath();
+                this.moveTo(x + rTL, y);
+                this.lineTo(x + w - rTR, y);
+                this.quadraticCurveTo(x + w, y, x + w, y + rTR);
+                this.lineTo(x + w, y + h - rBR);
+                this.quadraticCurveTo(x + w, y + h, x + w - rBR, y + h);
+                this.lineTo(x + rBL, y + h);
+                this.quadraticCurveTo(x, y + h, x, y + h - rBL);
+                this.lineTo(x, y + rTL);
+                this.quadraticCurveTo(x, y, x + rTL, y);
+                this.closePath();
+                return this;
+            };
+        }
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const shelfCanvas = document.getElementById('shelfCanvas');
+        const shelfCtx = shelfCanvas.getContext('2d');
 
+        // 12 Distinct, High-Contrast Colors
         const COLORS = [
-            '#ef4444', // 0: Fire Red
-            '#3b82f6', // 1: Water Blue
-            '#10b981', // 2: Nature Green
-            '#eab308', // 3: Light Gold
-            '#a855f7', // 4: Arcane Purple
-            '#ec4899', // 5: Plasma Pink
-            '#06b6d4', // 6: Ice Cyan
-            '#f97316', // 7: Magma Orange
-            '#84cc16', // 8: Lime Acid
-            '#6366f1', // 9: Indigo Void
-            '#14b8a6', // 10: Teal Essence
-            '#f43f5e', // 11: Rose Quartz
+            '#ef4444', '#3b82f6', '#10b981', '#eab308', 
+            '#a855f7', '#ec4899', '#06b6d4', '#f97316', 
+            '#84cc16', '#6366f1', '#78350f', '#f43f5e'
         ];
 
-        let currentLevel = 0; // 0-indexed (Level 1 to 50)
+        let currentLevel = 0; 
         let tubes = [];
         let selectedTubeIndex = null;
         let TUBE_CAPACITY = 4;
@@ -102,19 +149,82 @@
 
         let undosLeft = 3;
         let moveHistory = [];
+        let soundEnabled = true;
+        let powerups = { vial: 1, shuffle: 1, clear: 1 };
 
         let animating = false;
         let animProgress = 0; 
         let animData = null;
+        let splashParticles = [];
+
+        let audioCtx = null;
+        function initAudio() {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+            } catch(e) {}
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            try {
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'pop') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(600, now + 0.08);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } else if (type === 'success') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(554.37, now + 0.1);
+                    osc.frequency.setValueAtTime(659.25, now + 0.2);
+                    osc.frequency.setValueAtTime(880, now + 0.3);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                } else if (type === 'powerup') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(500, now);
+                    osc.frequency.exponentialRampToValueAtTime(1000, now + 0.2);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                }
+            } catch(e) {}
+        }
+
+        function toggleAudio() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('sound-btn').innerText = soundEnabled ? '🔊' : '🔇';
+        }
 
         function startGame() {
+            initAudio();
             const splash = document.getElementById('splash-screen');
             splash.style.opacity = '0';
             setTimeout(() => {
                 splash.style.display = 'none';
-                initLevel();
                 resizeCanvas();
-            }, 700);
+                initLevel();
+            }, 500);
         }
 
         function getLevelConfig(lvl) {
@@ -128,9 +238,7 @@
         }
 
         function initLevel() {
-            if (currentLevel >= TOTAL_LEVELS) {
-                currentLevel = TOTAL_LEVELS - 1;
-            }
+            if (currentLevel >= TOTAL_LEVELS) currentLevel = 0;
             
             const config = getLevelConfig(currentLevel);
             document.getElementById('level-indicator').innerText = `Level ${currentLevel + 1} / ${TOTAL_LEVELS} (${config.colorsCount} Jars)`;
@@ -138,13 +246,11 @@
             selectedTubeIndex = null;
             animating = false;
             moveHistory = []; 
-            updateUndoUI();
+            updateUI();
 
             let pool = [];
             for (let i = 0; i < config.colorsCount; i++) {
-                for (let j = 0; j < TUBE_CAPACITY; j++) {
-                    pool.push(i);
-                }
+                for (let j = 0; j < TUBE_CAPACITY; j++) pool.push(i);
             }
 
             do {
@@ -154,17 +260,12 @@
             tubes = [];
             for (let i = 0; i < config.filledTubes; i++) {
                 let tube = [];
-                for (let j = 0; j < TUBE_CAPACITY; j++) {
-                    tube.push(pool.pop());
-                }
+                for (let j = 0; j < TUBE_CAPACITY; j++) tube.push(pool.pop());
                 tubes.push(tube);
             }
-
-            for (let i = 0; i < config.emptyTubes; i++) {
-                tubes.push([]);
-            }
+            for (let i = 0; i < config.emptyTubes; i++) tubes.push([]);
             
-            draw();
+            resizeCanvas();
         }
 
         function isAlreadySorted(pool, config) {
@@ -175,134 +276,237 @@
             return chunked.every(t => t.length === 0 || (t.length === TUBE_CAPACITY && t.every(val => val === t[0])));
         }
 
-        function updateUndoUI() {
+        function updateUI() {
             const undoBtn = document.getElementById('undo-btn');
-            const undoCount = document.getElementById('undo-count');
-            undoCount.innerText = undosLeft;
+            document.getElementById('undo-count').innerText = undosLeft;
             undoBtn.disabled = undosLeft <= 0 || moveHistory.length === 0;
+
+            const lvl = currentLevel + 1;
+            
+            const vialBtn = document.getElementById('pw-vial');
+            const vialTxt = document.getElementById('pw-vial-txt');
+            if (lvl >= 3) {
+                vialBtn.disabled = false;
+                vialTxt.innerText = `Extra (${powerups.vial})`;
+            } else {
+                vialBtn.disabled = true;
+                vialTxt.innerText = '🔒 Lvl 3';
+            }
+
+            const shufBtn = document.getElementById('pw-shuffle');
+            const shufTxt = document.getElementById('pw-shuffle-txt');
+            if (lvl >= 5) {
+                shufBtn.disabled = false;
+                shufTxt.innerText = `Shuffle (${powerups.shuffle})`;
+            } else {
+                shufBtn.disabled = true;
+                shufTxt.innerText = '🔒 Lvl 5';
+            }
+
+            const clrBtn = document.getElementById('pw-clear');
+            const clrTxt = document.getElementById('pw-clear-txt');
+            if (lvl >= 8) {
+                clrBtn.disabled = false;
+                clrTxt.innerText = `Clear (${powerups.clear})`;
+            } else {
+                clrBtn.disabled = true;
+                clrTxt.innerText = '🔒 Lvl 8';
+            }
         }
 
         function resizeCanvas() {
             const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width * window.devicePixelRatio;
-            canvas.height = rect.height * window.devicePixelRatio;
+            const w = rect.width || canvas.clientWidth || 350;
+            const h = rect.height || canvas.clientHeight || 450;
+            
+            canvas.width = w * window.devicePixelRatio;
+            canvas.height = h * window.devicePixelRatio;
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            shelfCanvas.width = w * window.devicePixelRatio;
+            shelfCanvas.height = h * window.devicePixelRatio;
+            shelfCtx.setTransform(1, 0, 0, 1, 0, 0);
+            shelfCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            drawShelves();
             draw();
         }
-
         window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('load', () => { resizeCanvas(); initLevel(); });
 
         function getLayoutMetrics() {
-            const width = canvas.clientWidth;
-            const height = canvas.clientHeight;
-            const numTubes = tubes.length;
-            
+            const width = (canvas.width / window.devicePixelRatio) || canvas.clientWidth || 350;
+            const height = (canvas.height / window.devicePixelRatio) || canvas.clientHeight || 450;
+            const numTubes = tubes.length || 4;
             const maxPerRow = numTubes > 6 ? Math.ceil(numTubes / 2) : numTubes;
             const rows = Math.ceil(numTubes / maxPerRow);
 
-            const tubeWidth = Math.min(36, (width / maxPerRow) - 10);
+            const tubeWidth = Math.min(30, (width / maxPerRow) - 10);
             const tubeHeight = tubeWidth * 2.7;
-            
             return { width, height, tubeWidth, tubeHeight, maxPerRow, rows };
         }
 
-        function draw() {
-            ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-
+        // ================= DEDICATED SHELF LAYER RENDERER =================
+        function drawShelves() {
+            if (!shelfCtx) return;
             const metrics = getLayoutMetrics();
+            shelfCtx.clearRect(0, 0, metrics.width, metrics.height);
+
             const { tubeWidth, tubeHeight, maxPerRow, rows } = metrics;
-            
-            const horizontalSpacing = (canvas.clientWidth - (maxPerRow * tubeWidth)) / (maxPerRow + 1);
-            const verticalSpacing = 20;
-            const startY = (canvas.clientHeight - (rows * tubeHeight + (rows - 1) * verticalSpacing)) / 2;
+            const verticalSpacing = 28;
+            const totalContentHeight = rows * tubeHeight + (rows - 1) * verticalSpacing;
+            const startY = Math.max(15, (metrics.height - totalContentHeight) / 2);
+
+            for (let r = 0; r < rows; r++) {
+                let shelfY = startY + r * (tubeHeight + verticalSpacing) + tubeHeight + 3;
+                let shelfLeft = 8;
+                let shelfRight = metrics.width - 8;
+                let shelfThickness = 14;
+
+                shelfCtx.save();
+                const woodGrad = shelfCtx.createLinearGradient(shelfLeft, shelfY, shelfLeft, shelfY + shelfThickness);
+                woodGrad.addColorStop(0, '#583822');   
+                woodGrad.addColorStop(0.2, '#422817'); 
+                woodGrad.addColorStop(0.8, '#2b190e'); 
+                woodGrad.addColorStop(1, '#130a05');   
+
+                shelfCtx.fillStyle = woodGrad;
+                shelfCtx.beginPath();
+                shelfCtx.roundRect(shelfLeft, shelfY, shelfRight - shelfLeft, shelfThickness, [3, 3, 5, 5]);
+                shelfCtx.fill();
+
+                shelfCtx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+                shelfCtx.fillRect(shelfLeft + 4, shelfY, shelfRight - shelfLeft - 8, 2);
+
+                shelfCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                shelfCtx.fillRect(shelfLeft, shelfY + shelfThickness, shelfRight - shelfLeft, 5);
+                shelfCtx.restore();
+            }
+        }
+
+        function draw() {
+            if (!ctx) return;
+            const metrics = getLayoutMetrics();
+            ctx.clearRect(0, 0, metrics.width, metrics.height);
+
+            const { tubeWidth, tubeHeight, maxPerRow, rows } = metrics;
+            const horizontalSpacing = (metrics.width - (maxPerRow * tubeWidth)) / (maxPerRow + 1);
+            const verticalSpacing = 28;
+            const totalContentHeight = rows * tubeHeight + (rows - 1) * verticalSpacing;
+            const startY = Math.max(15, (metrics.height - totalContentHeight) / 2);
 
             tubes.forEach((tube, index) => {
                 const row = Math.floor(index / maxPerRow);
                 const col = index % maxPerRow;
 
                 const x = horizontalSpacing + col * (tubeWidth + horizontalSpacing);
-                const y = Math.max(10, startY + row * (tubeHeight + verticalSpacing));
+                const y = startY + row * (tubeHeight + verticalSpacing);
 
                 tube.rx = x;
                 tube.ry = y;
                 tube.rwidth = tubeWidth;
                 tube.rheight = tubeHeight;
 
-                let skipTopCount = 0;
-                if (animating && animData && animData.fromIdx === index) {
-                    skipTopCount = animData.count;
-                }
+                if (animating && animData && animData.fromIdx === index) return;
 
-                draw3DTube(tube, x, y, tubeWidth, tubeHeight, index === selectedTubeIndex, skipTopCount);
+                draw3DTube(tube, x, y, tubeWidth, tubeHeight, index === selectedTubeIndex);
             });
 
             if (animating && animData) {
-                renderPourAnimation();
+                renderCinematicPour();
             }
+            renderParticles();
         }
 
-        // ================= 3D JAR RENDERING ENGINE =================
-        function draw3DTube(tube, x, y, w, h, isSelected, skipTopCount = 0) {
+        // ================= HIGH-END 3D JAR & UNIFIED LIQUID RENDERER =================
+        function draw3DTube(tube, x, y, w, h, isSelected, tiltAngle = 0, customAlpha = 1, isPouringSource = false) {
             ctx.save();
+            ctx.globalAlpha = customAlpha;
 
             let renderY = y;
-            if (isSelected) {
-                renderY -= 12; // Floating lift offset when selected
+            if (isSelected && !isPouringSource && tiltAngle === 0) {
+                renderY -= 10; 
+            }
+
+            if (isPouringSource) {
+                ctx.translate(x + w / 2, renderY);
+                ctx.rotate(tiltAngle);
+                ctx.translate(-(x + w / 2), -renderY);
             }
 
             const borderWidth = 3;
             const innerW = w - (borderWidth * 2);
-            const innerH = h - 16;
+            const innerH = h - 14;
             const layerH = innerH / TUBE_CAPACITY;
 
-            // 1. Draw 3D Base Shadow Underneath Jar
-            ctx.save();
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-            ctx.beginPath();
-            ctx.ellipse(x + w / 2, renderY + h + 2, w / 2.2, 4, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
+            if (!isPouringSource && tiltAngle === 0) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.beginPath();
+                ctx.ellipse(x + w / 2, renderY + h + 5, w / 2.0, 4.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
 
-            // 2. Clip Layer Contents Inside Curved 3D Glass Silhouette
             ctx.save();
             ctx.beginPath();
-            ctx.roundRect(x + borderWidth, renderY + 14, innerW, innerH - 6, [0, 0, w/2.8, w/2.8]);
+            ctx.roundRect(x + borderWidth, renderY + 12, innerW, innerH - 4, [0, 0, w/2.8, w/2.8]);
             ctx.clip();
 
-            const renderLength = tube.length - skipTopCount;
-            for (let layerIndex = 0; layerIndex < renderLength; layerIndex++) {
-                const colorIdx = tube[layerIndex];
-                const fromBottom = TUBE_CAPACITY - 1 - layerIndex;
-                const ly = renderY + 14 + (fromBottom * layerH);
-                
-                // Horizontal 3D cylindrical lighting gradient across each liquid block
+            let renderList = [...tube];
+            if (isPouringSource && animData) {
+                let removeCount = Math.floor(animData.count * Math.min(1, (animProgress - 0.25) / 0.55));
+                removeCount = Math.max(0, Math.min(animData.count, removeCount));
+                renderList.length = tube.length - removeCount;
+            }
+
+            let groupedLayers = [];
+            for (let i = 0; i < renderList.length; i++) {
+                let c = renderList[i];
+                if (groupedLayers.length > 0 && groupedLayers[groupedLayers.length - 1].color === c) {
+                    groupedLayers[groupedLayers.length - 1].count++;
+                } else {
+                    groupedLayers.push({ color: c, count: 1, startIndex: i });
+                }
+            }
+
+            groupedLayers.forEach((group) => {
+                let blockH = group.count * layerH;
+                let fromBottom = TUBE_CAPACITY - (group.startIndex + group.count);
+                let ly = renderY + 12 + (fromBottom * layerH);
+
                 const layerGrad = ctx.createLinearGradient(x, ly, x + w, ly);
-                const baseColor = COLORS[colorIdx];
+                const baseColor = COLORS[group.color] || '#ffffff';
                 
-                layerGrad.addColorStop(0, adjustColorBrightness(baseColor, -40)); // Left dark shadow edge
-                layerGrad.addColorStop(0.3, baseColor);                          // Mid body color
-                layerGrad.addColorStop(0.5, adjustColorBrightness(baseColor, 50)); // Center shiny highlight refraction
-                layerGrad.addColorStop(0.85, baseColor);                         // Mid right color
-                layerGrad.addColorStop(1, adjustColorBrightness(baseColor, -55));  // Right dark shadow edge
+                layerGrad.addColorStop(0, adjustColorBrightness(baseColor, -45));
+                layerGrad.addColorStop(0.25, baseColor);
+                layerGrad.addColorStop(0.5, adjustColorBrightness(baseColor, 55));
+                layerGrad.addColorStop(0.8, baseColor);
+                layerGrad.addColorStop(1, adjustColorBrightness(baseColor, -55));
 
                 ctx.fillStyle = layerGrad;
-                ctx.fillRect(x, ly - 1, w, layerH + 2);
+                ctx.fillRect(x, ly - 1, w, blockH + 2);
 
-                // Top meniscus curve line for realistic liquid surface look
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
-                ctx.beginPath();
-                ctx.ellipse(x + w/2, ly, innerW/2, 2, 0, 0, Math.PI * 2);
-                ctx.fill();
-            }
+                let topLayerIndex = group.startIndex + group.count - 1;
+                if (topLayerIndex < renderList.length - 1 && renderList[topLayerIndex + 1] === group.color) {
+                    // Same color continuous block, skip meniscus divider
+                } else {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+                    ctx.beginPath();
+                    ctx.ellipse(x + w/2, ly, innerW/2, 2.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
             ctx.restore();
 
-            // 3. Draw 3D Glass Cylinder Sheen & Outer Border
             const glassGrad = ctx.createLinearGradient(x, renderY, x + w, renderY);
-            glassGrad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
-            glassGrad.addColorStop(0.15, 'rgba(255, 255, 255, 0.1)');
-            glassGrad.addColorStop(0.75, 'rgba(0, 0, 0, 0.1)');
-            glassGrad.addColorStop(0.92, 'rgba(255, 255, 255, 0.3)');
-            glassGrad.addColorStop(1, 'rgba(255, 255, 255, 0.6)');
+            glassGrad.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
+            glassGrad.addColorStop(0.18, 'rgba(255, 255, 255, 0.15)');
+            glassGrad.addColorStop(0.75, 'rgba(0, 0, 0, 0.15)');
+            glassGrad.addColorStop(0.92, 'rgba(255, 255, 255, 0.4)');
+            glassGrad.addColorStop(1, 'rgba(255, 255, 255, 0.7)');
 
             ctx.strokeStyle = isSelected ? '#c084fc' : glassGrad;
             ctx.lineWidth = borderWidth;
@@ -310,88 +514,134 @@
             ctx.roundRect(x, renderY, w, h, [4, 4, w/2.5, w/2.5]);
             ctx.stroke();
 
-            // 4. Strong Glass Specular Highlight Strips for Depth
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
             ctx.beginPath();
-            ctx.roundRect(x + 4, renderY + 16, 2.5, h - 26, 1);
+            ctx.roundRect(x + 3.5, renderY + 14, 2.5, h - 22, 1);
             ctx.fill();
 
-            // 5. Jar Rim Flange Outline (Top Neck Feature)
-            ctx.strokeStyle = isSelected ? '#d8b4fe' : 'rgba(255, 255, 255, 0.5)';
+            ctx.strokeStyle = isSelected ? '#d8b4fe' : 'rgba(255, 255, 255, 0.65)';
             ctx.lineWidth = 2.5;
             ctx.beginPath();
-            ctx.roundRect(x - 2, renderY, w + 4, 8, 2);
+            ctx.roundRect(x - 2, renderY, w + 4, 7, 2);
             ctx.stroke();
 
             ctx.restore();
         }
 
-        // Color shading utility for 3D metallic/cylindrical light interpolation
         function adjustColorBrightness(hex, percent) {
             let num = parseInt(hex.replace("#",""), 16);
             let r = (num >> 16) + percent;
             let g = ((num >> 8) & 0x00FF) + percent;
             let b = (num & 0x0000FF) + percent;
-            r = Math.clamp(r, 0, 255);
-            g = Math.clamp(g, 0, 255);
-            b = Math.clamp(b, 0, 255);
+            r = Math.min(Math.max(r, 0), 255);
+            g = Math.min(Math.max(g, 0), 255);
+            b = Math.min(Math.max(b, 0), 255);
             return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1)}`;
         }
 
-        Math.clamp = function(num, min, max) {
-            return Math.min(Math.max(num, min), max);
-        };
-
-        function renderPourAnimation() {
-            animProgress += 0.09; 
+        // ================= CINEMATIC POUR ANIMATION =================
+        function renderCinematicPour() {
+            animProgress += 0.012; // Slow-motion elegant speed
             if (animProgress >= 1) {
                 animProgress = 1;
                 animating = false;
                 finalizePour();
                 checkGameState();
+                return;
             }
 
             const fromT = tubes[animData.fromIdx];
             const toT = tubes[animData.toIdx];
 
-            const startX = fromT.rx + fromT.rwidth / 2;
-            const startY = fromT.ry - 15;
-            const endX = toT.rx + toT.rwidth / 2;
-            const endY = toT.ry - 15;
+            const startX = fromT.rx;
+            const startY = fromT.ry;
+            const isRight = animData.toIdx > animData.fromIdx;
+            const targetX = toT.rx + (isRight ? 16 : -16);
+            const targetY = toT.ry - 55;
 
-            const currX = startX + (endX - startX) * animProgress;
-            const currY = startY + (endY - startY) * animProgress - Math.sin(animProgress * Math.PI) * 40;
+            let currX, currY, tiltAngle = 0;
+            if (animProgress < 0.25) {
+                let p = animProgress / 0.25;
+                currX = startX + (targetX - startX) * p;
+                currY = startY + (targetY - startY) * p;
+            } else if (animProgress < 0.8) {
+                let p = (animProgress - 0.25) / 0.55;
+                currX = targetX;
+                currY = targetY;
+                tiltAngle = (isRight ? Math.PI * 0.52 : -Math.PI * 0.52) * Math.sin(p * Math.PI * 0.5);
+            } else {
+                let p = (animProgress - 0.8) / 0.2;
+                currX = targetX + (startX - targetX) * p;
+                currY = targetY + (startY - targetY) * p;
+            }
 
-            ctx.save();
-            ctx.strokeStyle = COLORS[animData.colorIdx];
-            ctx.lineWidth = 5;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(currX, currY);
-            ctx.lineTo(endX, endY + 10);
-            ctx.stroke();
-            ctx.restore();
+            const metrics = getLayoutMetrics();
+            ctx.clearRect(0, 0, metrics.width, metrics.height);
 
-            if (animating) {
-                requestAnimationFrame(draw);
+            tubes.forEach((tube, index) => {
+                if (index === animData.fromIdx) return;
+                draw3DTube(tube, tube.rx, tube.ry, tube.rwidth, tube.rheight, index === selectedTubeIndex);
+            });
+
+            draw3DTube(fromT, currX, currY, fromT.rwidth, fromT.rheight, true, tiltAngle, 1, true);
+
+            if (animProgress >= 0.28 && animProgress <= 0.78) {
+                const rimX = currX + (isRight ? fromT.rwidth - 4 : 4);
+                const rimY = currY + 12;
+                const destX = toT.rx + toT.rwidth / 2;
+                const destY = toT.ry + 22;
+
+                ctx.save();
+                ctx.strokeStyle = COLORS[animData.colorIdx];
+                ctx.lineWidth = 4.5;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(rimX, rimY);
+                ctx.quadraticCurveTo((rimX + destX) / 2, rimY + 18, destX, destY);
+                ctx.stroke();
+                ctx.restore();
+
+                if (Math.random() < 0.6) {
+                    splashParticles.push({
+                        x: destX + (Math.random() - 0.5) * 8,
+                        y: destY,
+                        vx: (Math.random() - 0.5) * 2.5,
+                        vy: -Math.random() * 2.5 - 1,
+                        color: COLORS[animData.colorIdx],
+                        life: 1.0
+                    });
+                }
+            }
+
+            renderParticles();
+            requestAnimationFrame(renderCinematicPour);
+        }
+
+        function renderParticles() {
+            for (let i = splashParticles.length - 1; i >= 0; i--) {
+                let p = splashParticles[i];
+                p.x += p.vx; p.y += p.vy; p.life -= 0.05;
+                if (p.life <= 0) { splashParticles.splice(i, 1); continue; }
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+                ctx.fill();
             }
         }
 
+        // ================= INPUT & GAMEPLAY =================
         canvas.addEventListener('click', (e) => {
             if (animating) return;
-
             const rect = canvas.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
 
             for (let i = 0; i < tubes.length; i++) {
                 const t = tubes[i];
-                const hitPadding = 12;
                 if (
-                    clickX >= t.rx - hitPadding &&
-                    clickX <= t.rx + t.rwidth + hitPadding &&
-                    clickY >= t.ry - 20 &&
-                    clickY <= t.ry + t.rheight + hitPadding
+                    clickX >= t.rx - 10 && clickX <= t.rx + t.rwidth + 10 &&
+                    clickY >= t.ry - 15 && clickY <= t.ry + t.rheight + 15
                 ) {
                     handleTubeTap(i);
                     break;
@@ -400,6 +650,7 @@
         });
 
         function handleTubeTap(index) {
+            playSound('pop');
             if (selectedTubeIndex === null) {
                 if (tubes[index].length === 0) return;
                 selectedTubeIndex = index;
@@ -418,9 +669,7 @@
             const fromTube = tubes[fromIdx];
             const toTube = tubes[toIdx];
 
-            if (fromTube.length === 0) return;
-            if (toTube.length >= TUBE_CAPACITY) return;
-
+            if (fromTube.length === 0 || toTube.length >= TUBE_CAPACITY) return;
             const movingColor = fromTube[fromTube.length - 1];
             if (toTube.length > 0 && toTube[toTube.length - 1] !== movingColor) return;
 
@@ -430,99 +679,99 @@
                 else break;
             }
 
-            const spaceAvailable = TUBE_CAPACITY - toTube.length;
-            const actualMoveCount = Math.min(countToMove, spaceAvailable);
+            const actualMoveCount = Math.min(countToMove, TUBE_CAPACITY - toTube.length);
 
-            const snapshot = tubes.map(tube => [...tube]);
-            moveHistory.push(snapshot);
+            moveHistory.push(tubes.map(tube => [...tube]));
             if (moveHistory.length > 20) moveHistory.shift();
 
-            animData = {
-                fromIdx: fromIdx,
-                toIdx: toIdx,
-                colorIdx: movingColor,
-                count: actualMoveCount
-            };
-
+            animData = { fromIdx, toIdx, colorIdx: movingColor, count: actualMoveCount };
             animating = true;
             animProgress = 0;
-            updateUndoUI();
-            requestAnimationFrame(draw);
+            updateUI();
+            requestAnimationFrame(renderCinematicPour);
         }
 
         function finalizePour() {
             const fromTube = tubes[animData.fromIdx];
             const toTube = tubes[animData.toIdx];
-
             for (let i = 0; i < animData.count; i++) {
                 toTube.push(fromTube.pop());
             }
             animData = null;
-            draw();
+            resizeCanvas();
         }
 
         function undoMove() {
             if (animating || undosLeft <= 0 || moveHistory.length === 0) return;
-
-            const previousState = moveHistory.pop();
-            tubes = previousState.map(tube => [...tube]);
+            tubes = moveHistory.pop().map(t => [...t]);
             undosLeft--;
             selectedTubeIndex = null;
-            updateUndoUI();
-            draw();
+            updateUI();
+            resizeCanvas();
+        }
+
+        function skipLevel() {
+            if (animating) return;
+            currentLevel = (currentLevel + 1) % TOTAL_LEVELS;
+            initLevel();
+        }
+
+        function usePowerup(type) {
+            if (animating) return;
+            initAudio();
+            if (type === 'vial' && powerups.vial > 0 && currentLevel >= 2) {
+                powerups.vial--;
+                tubes.push([]);
+                playSound('powerup');
+                updateUI();
+                resizeCanvas();
+            } else if (type === 'shuffle' && powerups.shuffle > 0 && currentLevel >= 4) {
+                powerups.shuffle--;
+                let items = [];
+                tubes.forEach(t => { if (t.length > 0) items.push(...t); });
+                items.sort(() => Math.random() - 0.5);
+                tubes.forEach(t => {
+                    let cap = t.length;
+                    t.length = 0;
+                    for(let i=0; i<cap && items.length > 0; i++) t.push(items.pop());
+                });
+                playSound('powerup');
+                updateUI();
+                resizeCanvas();
+            } else if (type === 'clear' && powerups.clear > 0 && currentLevel >= 7) {
+                powerups.clear--;
+                for(let i=0; i<tubes.length; i++) {
+                    if (tubes[i].length > 0 && tubes[i].length < TUBE_CAPACITY) {
+                        let c = tubes[i][tubes[i].length - 1];
+                        while(tubes[i].length < TUBE_CAPACITY) tubes[i].push(c);
+                        break;
+                    }
+                }
+                playSound('powerup');
+                updateUI();
+                resizeCanvas();
+                checkGameState();
+            }
         }
 
         function checkGameState() {
-            if (checkWinCondition()) {
+            let won = tubes.every(t => t.length === 0 || (t.length === TUBE_CAPACITY && t.every(v => v === t[0])));
+            if (won) {
+                playSound('success');
                 setTimeout(() => {
-                    let earnedUndoMsg = "";
-                    if ((currentLevel + 1) % 3 === 0 && undosLeft < 3) {
-                        undosLeft++;
-                        earnedUndoMsg = " 🎁 Earned +1 Undo charge!";
-                    }
-
+                    if ((currentLevel + 1) % 3 === 0 && undosLeft < 3) undosLeft++;
                     const modal = document.getElementById('win-modal');
-                    const title = document.getElementById('win-title');
-                    const desc = document.getElementById('win-desc');
-                    const nextBtn = document.getElementById('next-btn');
-
                     if (currentLevel === TOTAL_LEVELS - 1) {
-                        title.innerText = "🏆 Game Complete!";
-                        desc.innerText = "Incredible! You have mastered all 50 tiers and unlocked every magic jar!";
-                        nextBtn.innerText = "Play Again 🔄";
-                        nextBtn.onclick = () => { currentLevel = 0; undosLeft = 3; initLevel(); };
-                    } else {
-                        title.innerText = "✨ Magic Sorted!";
-                        desc.innerText = `Level ${currentLevel + 1} cleared! Next tier adds more jars.${earnedUndoMsg}`;
-                        nextBtn.innerText = "Next Level ➡️";
-                        nextBtn.onclick = nextLevel;
+                        document.getElementById('win-title').innerText = "🏆 Game Complete!";
+                        document.getElementById('win-desc').innerText = "All 50 levels mastered!";
                     }
-                    updateUndoUI();
                     modal.classList.remove('hidden');
                 }, 150);
             }
         }
 
-        function checkWinCondition() {
-            for (let tube of tubes) {
-                if (tube.length === 0) continue;
-                if (tube.length < TUBE_CAPACITY) return false;
-                const baseColor = tube[0];
-                for (let i = 1; i < tube.length; i++) {
-                    if (tube[i] !== baseColor) return false;
-                }
-            }
-            return true;
-        }
-
-        function restartLevel() {
-            initLevel();
-        }
-
-        function nextLevel() {
-            currentLevel++;
-            initLevel();
-        }
+        function restartLevel() { initLevel(); }
+        function nextLevel() { currentLevel++; initLevel(); }
     </script>
 </body>
 </html>
