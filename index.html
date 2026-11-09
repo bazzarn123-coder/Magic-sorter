@@ -23,7 +23,7 @@
         }
         .glow-title { animation: pulse-glow 2.5s infinite; }
         .safe-bottom-padding {
-            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.25rem);
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 2.5rem);
         }
     </style>
 </head>
@@ -34,7 +34,7 @@
         <div class="relative z-10 max-w-xs w-full bg-slate-900/90 backdrop-blur-md border border-purple-500/30 p-8 rounded-3xl shadow-2xl">
             <div class="text-6xl mb-4 animate-bounce">🧪✨</div>
             <h1 class="text-3xl font-extrabold text-purple-400 mb-2 glow-title">Magic Sorter</h1>
-            <p class="text-xs text-slate-400 mb-8">50 3D Stages. Safe Navigation Spacing & Permanent Shelves!</p>
+            <p class="text-xs text-slate-400 mb-8">50 3D Stages. Raised Navigation Padding & Permanent Shelves!</p>
             <button onclick="startGame()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-purple-900/50 transition">
                 Start Game 🚀
             </button>
@@ -68,7 +68,7 @@
 
     <!-- Canvas Play Area -->
     <main class="flex-1 flex items-center justify-center w-full max-w-md p-2 relative overflow-hidden">
-        <div class="relative w-full h-full max-h-[460px] bg-slate-950 rounded-2xl shadow-inner overflow-hidden">
+        <div class="relative w-full h-full max-h-[400px] bg-slate-950 rounded-2xl shadow-inner overflow-hidden">
             <!-- Dedicated Shelf Background Layer Canvas -->
             <canvas id="shelfCanvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
             <!-- Main Game & Jars Canvas -->
@@ -88,23 +88,23 @@
         </div>
     </main>
 
-    <!-- BOTTOM CONTROLS & POWER-UPS WITH SAFE NAVIGATION PADDING -->
+    <!-- BOTTOM CONTROLS & POWER-UPS WITH RAISED SAFE PADDING -->
     <footer class="w-full max-w-md flex flex-col bg-slate-900/95 border-t border-slate-800 safe-bottom-padding">
-        <div class="px-3 pt-2 grid grid-cols-3 gap-2">
-            <button id="pw-vial" onclick="usePowerup('vial')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-2 text-center transition active:scale-95 flex flex-col items-center">
+        <div class="px-3 pt-2.5 grid grid-cols-3 gap-2">
+            <button id="pw-vial" onclick="usePowerup('vial')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-2.5 text-center transition active:scale-95 flex flex-col items-center">
                 <span class="text-base">🧪</span>
                 <span id="pw-vial-txt" class="text-[10px] text-slate-400">🔒 Lvl 3</span>
             </button>
-            <button id="pw-shuffle" onclick="usePowerup('shuffle')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-2 text-center transition active:scale-95 flex flex-col items-center">
+            <button id="pw-shuffle" onclick="usePowerup('shuffle')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-2.5 text-center transition active:scale-95 flex flex-col items-center">
                 <span class="text-base">🔀</span>
                 <span id="pw-shuffle-txt" class="text-[10px] text-slate-400">🔒 Lvl 5</span>
             </button>
-            <button id="pw-clear" onclick="usePowerup('clear')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-2 text-center transition active:scale-95 flex flex-col items-center">
+            <button id="pw-clear" onclick="usePowerup('clear')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-2.5 text-center transition active:scale-95 flex flex-col items-center">
                 <span class="text-base">✨</span>
                 <span id="pw-clear-txt" class="text-[10px] text-slate-400">🔒 Lvl 8</span>
             </button>
         </div>
-        <div class="text-center text-[10px] text-slate-500 mt-1.5">
+        <div class="text-center text-[10px] text-slate-500 mt-2">
             Tap vial to select, tap target to pour.
         </div>
     </footer>
@@ -320,7 +320,7 @@
         function resizeCanvas() {
             const rect = canvas.getBoundingClientRect();
             const w = rect.width || canvas.clientWidth || 350;
-            const h = rect.height || canvas.clientHeight || 450;
+            const h = rect.height || canvas.clientHeight || 400;
             
             canvas.width = w * window.devicePixelRatio;
             canvas.height = h * window.devicePixelRatio;
@@ -340,12 +340,12 @@
 
         function getLayoutMetrics() {
             const width = (canvas.width / window.devicePixelRatio) || canvas.clientWidth || 350;
-            const height = (canvas.height / window.devicePixelRatio) || canvas.clientHeight || 450;
+            const height = (canvas.height / window.devicePixelRatio) || canvas.clientHeight || 400;
             const numTubes = tubes.length || 4;
             const maxPerRow = numTubes > 6 ? Math.ceil(numTubes / 2) : numTubes;
             const rows = Math.ceil(numTubes / maxPerRow);
 
-            const tubeWidth = Math.min(28, (width / maxPerRow) - 10);
+            const tubeWidth = Math.min(26, (width / maxPerRow) - 10);
             const tubeHeight = tubeWidth * 2.6;
             return { width, height, tubeWidth, tubeHeight, maxPerRow, rows };
         }
@@ -356,9 +356,9 @@
             shelfCtx.clearRect(0, 0, metrics.width, metrics.height);
 
             const { tubeWidth, tubeHeight, maxPerRow, rows } = metrics;
-            const verticalSpacing = 24;
+            const verticalSpacing = 22;
             const totalContentHeight = rows * tubeHeight + (rows - 1) * verticalSpacing;
-            const startY = Math.max(12, (metrics.height - totalContentHeight) / 2);
+            const startY = Math.max(10, (metrics.height - totalContentHeight) / 2);
 
             for (let r = 0; r < rows; r++) {
                 let shelfY = startY + r * (tubeHeight + verticalSpacing) + tubeHeight + 3;
@@ -394,9 +394,9 @@
 
             const { tubeWidth, tubeHeight, maxPerRow, rows } = metrics;
             const horizontalSpacing = (metrics.width - (maxPerRow * tubeWidth)) / (maxPerRow + 1);
-            const verticalSpacing = 24;
+            const verticalSpacing = 22;
             const totalContentHeight = rows * tubeHeight + (rows - 1) * verticalSpacing;
-            const startY = Math.max(12, (metrics.height - totalContentHeight) / 2);
+            const startY = Math.max(10, (metrics.height - totalContentHeight) / 2);
 
             tubes.forEach((tube, index) => {
                 const row = Math.floor(index / maxPerRow);
@@ -685,94 +685,4 @@
             moveHistory.push(tubes.map(tube => [...tube]));
             if (moveHistory.length > 20) moveHistory.shift();
 
-            animData = { fromIdx, toIdx, colorIdx: movingColor, count: actualMoveCount };
-            animating = true;
-            animProgress = 0;
-            updateUI();
-            requestAnimationFrame(renderCinematicPour);
-        }
-
-        function finalizePour() {
-            const fromTube = tubes[animData.fromIdx];
-            const toTube = tubes[animData.toIdx];
-            for (let i = 0; i < animData.count; i++) {
-                toTube.push(fromTube.pop());
-            }
-            animData = null;
-            resizeCanvas();
-        }
-
-        function undoMove() {
-            if (animating || undosLeft <= 0 || moveHistory.length === 0) return;
-            tubes = moveHistory.pop().map(t => [...t]);
-            undosLeft--;
-            selectedTubeIndex = null;
-            updateUI();
-            resizeCanvas();
-        }
-
-        function skipLevel() {
-            if (animating) return;
-            currentLevel = (currentLevel + 1) % TOTAL_LEVELS;
-            initLevel();
-        }
-
-        function usePowerup(type) {
-            if (animating) return;
-            initAudio();
-            if (type === 'vial' && powerups.vial > 0 && currentLevel >= 2) {
-                powerups.vial--;
-                tubes.push([]);
-                playSound('powerup');
-                updateUI();
-                resizeCanvas();
-            } else if (type === 'shuffle' && powerups.shuffle > 0 && currentLevel >= 4) {
-                powerups.shuffle--;
-                let items = [];
-                tubes.forEach(t => { if (t.length > 0) items.push(...t); });
-                items.sort(() => Math.random() - 0.5);
-                tubes.forEach(t => {
-                    let cap = t.length;
-                    t.length = 0;
-                    for(let i=0; i<cap && items.length > 0; i++) t.push(items.pop());
-                });
-                playSound('powerup');
-                updateUI();
-                resizeCanvas();
-            } else if (type === 'clear' && powerups.clear > 0 && currentLevel >= 7) {
-                powerups.clear--;
-                for(let i=0; i<tubes.length; i++) {
-                    if (tubes[i].length > 0 && tubes[i].length < TUBE_CAPACITY) {
-                        let c = tubes[i][tubes[i].length - 1];
-                        while(tubes[i].length < TUBE_CAPACITY) tubes[i].push(c);
-                        break;
-                    }
-                }
-                playSound('powerup');
-                updateUI();
-                resizeCanvas();
-                checkGameState();
-            }
-        }
-
-        function checkGameState() {
-            let won = tubes.every(t => t.length === 0 || (t.length === TUBE_CAPACITY && t.every(v => v === t[0])));
-            if (won) {
-                playSound('success');
-                setTimeout(() => {
-                    if ((currentLevel + 1) % 3 === 0 && undosLeft < 3) undosLeft++;
-                    const modal = document.getElementById('win-modal');
-                    if (currentLevel === TOTAL_LEVELS - 1) {
-                        document.getElementById('win-title').innerText = "🏆 Game Complete!";
-                        document.getElementById('win-desc').innerText = "All 50 levels mastered!";
-                    }
-                    modal.classList.remove('hidden');
-                }, 150);
-            }
-        }
-
-        function restartLevel() { initLevel(); }
-        function nextLevel() { currentLevel++; initLevel(); }
-    </script>
-</body>
-</html>
+            animData = {
